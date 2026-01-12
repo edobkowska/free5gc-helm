@@ -1,0 +1,67 @@
+name: Publish Helm charts on tag
+
+on:
+  push:
+    tags:
+      - 'v*'  # triggers on v4.1.1, v4.1.2, etc.
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main   # ensures we are on the main branch, not the tag
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Prepare docs directory
+        run: mkdir -p docs
+
+      - name: Package all Free5GC subcharts
+        run: |
+          for chart in charts/free5gc/charts/*; do
+            # only process directories, skip files
+            if [ -d "$chart" ]; then
+              echo "Packaging chart $chart ..."
+              # skip dependency update if local .tgz exists inside the chart
+              if [ -d "$chart/charts" ]; then
+                echo "Local dependencies found, skipping 'helm dependency update'"
+              else
+                helm dependency update "$chart"
+              fi
+              helm package "$chart" --destination docs
+            else
+              echo "Skipping $chart (not a directory)"
+            fi
+          done
+
+      - name: Update Helm repo index
+        run: |
+          if [ -f docs/index.yaml ]; then
+            helm repo index docs --url https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }} --merge docs/index.yaml
+          else
+            helm repo index docs --url https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          fi
+
+      - name: Commit and push Helm repo
+        run: |
+          git add docs
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore(release): publish Helm charts for $GITHUB_REF_NAME"
+            git push
+          fi
