@@ -5,8 +5,8 @@ apiVersion: v2
 name: free5gc-chf
 description: A Helm chart to deploy the free5GC CHF
 type: application
-version: 0.1.0
-appVersion: latest
+version: 4.1.1
+appVersion: 4.1.0
 maintainers:
 - email: linyangzhe0508@gmail.com
   name: YANG-ZHE, LIN
