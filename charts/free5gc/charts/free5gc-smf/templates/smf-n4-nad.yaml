@@ -32,7 +32,6 @@ spec:
           "ipam": {
             "type": "static",
             "routes": []
-            ]
           }
         }
 {{- if eq .Values.global.n4network.type "macvlan" -}}
